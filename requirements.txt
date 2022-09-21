@@ -1,1 +1,4 @@
+progress==1.6
+pyfiglet==0.8.post1
 pytube==12.1.0
+simple-term-menu==1.5.1
