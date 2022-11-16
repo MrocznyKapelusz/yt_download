@@ -4,6 +4,7 @@ from progress.spinner import Spinner
 from pyfiglet import Figlet
 
 # TODO: think of smarter way to show progress - maybe it is possible to use another bar
+# TODO: use command line arguments. Eg. File with links to multiple videos. Handle downloading a whole playlist. Set download location.
 # TODO: is it possible to merge DASH video and audio streams in Python? If so - implement :)
 
 def resolution_menu(streams):
