@@ -1,42 +1,82 @@
-from pytube import YouTube
+from pytube import YouTube, Playlist
+from typing import List
 from simple_term_menu import TerminalMenu
 from progress.spinner import Spinner
 from pyfiglet import Figlet
+import os
 
-# TODO: think of smarter way to show progress - maybe it is possible to use another bar
-# TODO: use command line arguments. Eg. File with links to multiple videos. Handle downloading a whole playlist. Set download location.
 # TODO: is it possible to merge DASH video and audio streams in Python? If so - implement :)
 
-def resolution_menu(streams):
-    options = [stream.resolution for stream in streams]
-    terminal_menu = TerminalMenu(options, title="Choose resolution")
+f = Figlet(font="slant")
+
+bar = Spinner("KB left... ")
+
+
+def progress_callback(*args):
+    bar.next()
+    bar.message = "KB left: " + str(args[2] / 1000) + " "
+
+
+def complete_callback(*args):
+    bar.finish()
+    print("Download complete")
+
+
+def option_menu():
+    options = ["Video download", "Playlist download"]
+    terminal_menu = TerminalMenu(options, title="Choose optio")
     menu_entry_index = terminal_menu.show()
     print(f"You have selected {options[menu_entry_index]}!")
-    return options[menu_entry_index], menu_entry_index
+    return options[menu_entry_index]
+
+
+def download_video(video: YouTube, path=".", prefix=None):
+    print(f"Downloading {video.title}... into directory {path}")
+    stream = (
+        video.streams.filter(progressive=True, file_extension="mp4")
+        .order_by("resolution")
+        .desc()[0]
+    )
+    filename = stream.default_filename.replace(" ", "_").replace("-", "")
+
+    stream.download(output_path=path, filename=filename, filename_prefix=prefix)
+
+
+def download_playlist(playlist: Playlist):
+    print(f"Downloading {playlist.title}...")
+    # TODO: use getcwd to navigate, download somwhere else
+    try:
+        path = f"./{playlist.title.replace(' ','_')}"
+        os.mkdir(path)
+    except FileExistsError:
+        pass
+
+    for num, video in enumerate(playlist.videos):
+        video.register_on_progress_callback(progress_callback)
+        video.register_on_complete_callback(complete_callback)
+        download_video(video, path, prefix=f"{num+1:02}_")
+
 
 def main():
+    print(f.renderText("YT Downloader"))
+    chosen_opt = option_menu()
+    if chosen_opt == "Video download":
+        video_url = input("\nEnter YouTube video URL: ")
+        video = YouTube(
+            video_url,
+            on_progress_callback=progress_callback,
+            on_complete_callback=complete_callback,
+        )
+        download_video(video)
 
-    f = Figlet(font='slant')
-    print(f.renderText('YT Downloader'))
+    elif chosen_opt == "Playlist download":
+        playlist_url = input("\nEnter YouTube playlist URL: ")
+        playlist = Playlist(playlist_url)
+        download_playlist(playlist)
 
-    bar = Spinner('KB left... ')
-    def progress_callback(*args):
-        bar.next()
-        bar.message = "KB left: " + str(args[2]/1000) + " "
+    else:
+        raise NameError(f"Chosen option '{chosen_opt}' not available")
 
-    def complete_callback(*args):
-        bar.finish()
-        print("Download complete")
 
-    video_url = input('\nEnter YouTube video URL: ')
-
-    yt = YouTube(video_url, on_progress_callback=progress_callback, on_complete_callback=complete_callback)
-
-    print("\nQuerying for available resolution options...")
-
-    streams = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc()
-    chosen_res = resolution_menu(streams)
-    streams[chosen_res[1]].download()
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
